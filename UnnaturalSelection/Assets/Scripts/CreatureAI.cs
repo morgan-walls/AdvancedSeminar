@@ -5,6 +5,7 @@ public class CreatureAI : MonoBehaviour
 {
     private NavMeshAgent agent;
     [SerializeField] private GameObject target;
+    private GameManager gameManager;
 
     [SerializeField] private float wanderDistance = 5.0f;
 
@@ -17,6 +18,11 @@ public class CreatureAI : MonoBehaviour
     private void Start()
     {
         agent = GetComponent<NavMeshAgent>();
+        gameManager = FindAnyObjectByType<GameManager>();
+
+        gameManager.RegisterCreature(this);
+
+        GenerateWanderCooldown();
     }
 
     private void Update()
@@ -52,10 +58,15 @@ public class CreatureAI : MonoBehaviour
         } while (Vector2.Distance(target.transform.position, Vector2.zero) >= 15.0f);
         agent.SetDestination(target.transform.position);
 
-        wanderTimer = Random.Range(WANDER_COOLDOWN_MIN, WANDER_COOLDOWN_MAX);
-        Debug.Log("Wandering Begins, going to " + target.transform.position + "\nCooldown: " + wanderTimer);
-
+        GenerateWanderCooldown();
+        
         targetOffset = target.transform.position;
+    }
+
+    private void GenerateWanderCooldown()
+    {
+        wanderTimer = Random.Range(WANDER_COOLDOWN_MIN, WANDER_COOLDOWN_MAX);
+        //Debug.Log("Wandering Begins, going to " + target.transform.position + "\nCooldown: " + wanderTimer);
     }
 
     private float GetRandomDistance()
