@@ -9,6 +9,9 @@ public class GameManager : MonoBehaviour
 
     private List<CreatureAI> creatureList;
     [SerializeField] private GameObject creaturePrefab;
+    [SerializeField] private GameObject holoCreature;
+    [SerializeField] private LayerMask groundLayerMask;
+    [SerializeField] private LayerMask creatureLayerMask;
 
     private void Awake()
     {
@@ -34,4 +37,8 @@ public class GameManager : MonoBehaviour
     {
         creatureList.Remove(creature);
     }
+
+    public GameObject GetHoloCreature() { return holoCreature; }
+    public LayerMask GetGroundLayerMask() { return groundLayerMask; }
+    public LayerMask GetCreatureLayerMask() { return creatureLayerMask; }
 }

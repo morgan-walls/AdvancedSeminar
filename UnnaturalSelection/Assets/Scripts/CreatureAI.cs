@@ -13,6 +13,11 @@ public class CreatureAI : MonoBehaviour
     [SerializeField] private float WANDER_COOLDOWN_MAX = 10.0f;
     [SerializeField] private float WANDER_COOLDOWN_MIN = 3.0f;
 
+    [SerializeField] private GameObject face;
+    [SerializeField] private Material baseMaterial;
+    [SerializeField] private Material baseFaceMaterial;
+    [SerializeField] private Material deleteMaterial;
+
     private Vector3 targetOffset;
 
     private void Start()
@@ -72,5 +77,17 @@ public class CreatureAI : MonoBehaviour
     private float GetRandomDistance()
     {
         return Random.Range(wanderDistance * -1.0f, wanderDistance);
+    }
+
+    public void ResetMaterial()
+    {
+        gameObject.GetComponent<MeshRenderer>().material = baseMaterial;
+        face.GetComponent<MeshRenderer>().material = baseFaceMaterial;
+    }
+
+    public void MarkForDeletion()
+    {
+        gameObject.GetComponent<MeshRenderer>().material = deleteMaterial;
+        face.GetComponent<MeshRenderer>().material = deleteMaterial;
     }
 }

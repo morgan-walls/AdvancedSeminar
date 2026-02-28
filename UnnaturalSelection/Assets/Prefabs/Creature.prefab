@@ -123,7 +123,7 @@ GameObject:
   - component: {fileID: 8009222166176366848}
   - component: {fileID: 1793922508861515422}
   - component: {fileID: 4284959745733132992}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Creature_Face
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -217,7 +217,7 @@ GameObject:
   - component: {fileID: 5622344379452281718}
   - component: {fileID: 6150238104006882458}
   - component: {fileID: 655066968753866136}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Creature
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -359,6 +359,10 @@ MonoBehaviour:
   wanderDistance: 7
   WANDER_COOLDOWN_MAX: 20
   WANDER_COOLDOWN_MIN: 3
+  face: {fileID: 3176544938558718134}
+  baseMaterial: {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  baseFaceMaterial: {fileID: 2100000, guid: 2d4c095c5d589164f97caa9adcd43772, type: 2}
+  deleteMaterial: {fileID: 2100000, guid: 87c86e88eb1058c4096bf0f7c9b99be5, type: 2}
 --- !u!54 &655066968753866136
 Rigidbody:
   m_ObjectHideFlags: 0
