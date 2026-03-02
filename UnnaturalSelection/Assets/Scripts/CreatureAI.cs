@@ -1,3 +1,5 @@
+using NUnit.Framework;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
@@ -38,7 +40,7 @@ public class CreatureAI : MonoBehaviour
         }
         else
         {
-            Wander();
+            RandomWander();
         }
 
         if (targetOffset != null)
@@ -47,7 +49,18 @@ public class CreatureAI : MonoBehaviour
         }
     }
 
-    private void Wander()
+    public void WanderToLocation(Vector3 location)
+    {
+        target.transform.position = location;
+
+        agent.SetDestination(target.transform.position);
+
+        GenerateWanderCooldown();
+
+        targetOffset = target.transform.position;
+    }
+
+    private void RandomWander()
     {
         float timer = 0.0f;
 
