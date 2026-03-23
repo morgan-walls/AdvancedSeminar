@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -11,7 +12,7 @@ public class CreatureBase : MonoBehaviour
 
     [SerializeField] private float maxHunger = 10.0f;
     [SerializeField] private float hunger = 10.0f;
-    [SerializeField] private float hungryRange;
+    [SerializeField] private float hungryStateStart;
     private bool isHungry = false;
 
     [SerializeField] private float maxHealth = 20.0f;
@@ -24,12 +25,18 @@ public class CreatureBase : MonoBehaviour
     [SerializeField] private List<FoodSource> FoodInRange;
     private bool movingToFood = false;
 
+
+    [SerializeField] private GameObject DetectionRange;
+    [SerializeField] private GameObject InteractionRange;
+    private const float detectionRangeSize = 20;
+    private const float interactionRangeSize = 5;
+
     /// <summary>
     /// all ranges for the creature, ordered from biggest to smallest
     /// </summary>
     private enum CreatureRanges
     {
-        DetectionRange = 0,
+        DetectionRange = 1,
         InteractionRange,
     }
 
@@ -43,8 +50,30 @@ public class CreatureBase : MonoBehaviour
         gameManager = FindAnyObjectByType<GameManager>();
         aiComponent = GetComponent<CreatureAI>();
 
-        hungryRange = maxHunger / gameManager.hungryRangeSlice;
+        hungryStateStart = maxHunger / gameManager.hungryRangeSlice;
         hunger = maxHunger;
+
+        DetectionRange.transform.localScale = Vector3.zero;
+        StartCoroutine(ExpandRange(DetectionRange, detectionRangeSize));
+
+        InteractionRange.transform.localScale = Vector3.zero;
+        StartCoroutine(ExpandRange(InteractionRange, interactionRangeSize));
+    }
+
+    IEnumerator ExpandRange(GameObject range, float rangeSize)
+    {
+        range.transform.localScale = Vector3.zero;
+
+        do
+        {
+            range.transform.localScale += Vector3.one;
+            yield return null;
+        } while (range.transform.localScale.x < rangeSize);
+
+        if (range.transform.localScale.x > rangeSize)
+        {
+            range.transform.localScale = new Vector3(rangeSize, rangeSize, rangeSize);
+        }
     }
 
     private void Update()
@@ -62,14 +91,16 @@ public class CreatureBase : MonoBehaviour
 
     private void CheckHunger()
     {
-        if (!isHungry && hunger <= hungryRange)
+        if (!isHungry && hunger <= hungryStateStart)
         {
             isHungry = true;
+
+            Debug.Log("Creature is Hungry");
         }
         if (hunger > 0)
         {
             hunger = DrainStatOverTime(hunger);
-            if (hunger <= hungryRange)
+            if (hunger <= hungryStateStart)
             {
                 if (!movingToFood)
                 {
@@ -77,6 +108,8 @@ public class CreatureBase : MonoBehaviour
                     {
                         aiComponent.WanderToLocation(FindClosestFoodSource().transform.position);
                         movingToFood = true;
+
+                        Debug.Log("Wandering to nearest Food");
                     }
                 }
             }
@@ -138,23 +171,29 @@ public class CreatureBase : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        Debug.Log("Trigger Entered");
-
-        if (triggersHit == (int)CreatureRanges.DetectionRange)
+        //Debug.Log("Trigger Entered");
+        if (other.TryGetComponent<FoodSource>(out FoodSource foodSource))
         {
-            if (other.TryGetComponent<FoodSource>(out FoodSource foodSource))
+            if (!FoodInRange.Contains(foodSource))
             {
                 FoodDetected(foodSource);
             }
-        }
-        else if (triggersHit == 1) 
-        {
-            if (isHungry)
+            else
             {
                 AddFood(FindClosestFoodSource().TakeFood());
             }
+            /*
+            if (triggersHit == (int)CreatureRanges.DetectionRange)
+            {
+                FoodDetected(foodSource);
+            }
+            else if (triggersHit == (int)CreatureRanges.InteractionRange)
+            {
+                AddFood(FindClosestFoodSource().TakeFood());
+            }
+            */
+            triggersHit++;
         }
-        triggersHit++;
     }
     private void OnTriggerExit(Collider other)
     {
