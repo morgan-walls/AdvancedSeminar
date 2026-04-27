@@ -30,6 +30,32 @@ public class PlayerScript : MonoBehaviour
         CheckSpawnMouseInputs();
         CheckDeleteMouseInputs();
         UpdateQuickActionTimer();
+        CheckTimeChange();
+        CheckUIChanges();
+    }
+
+    private void CheckUIChanges()
+    {
+        if (Input.GetKeyDown(KeyCode.T))
+        {
+            gameManager.ToggleTimescalePanel();
+        }
+        if (Input.GetKeyDown(KeyCode.G))
+        {
+            gameManager.ToggleGraphPanel();
+        }
+    }
+
+    private void CheckTimeChange()
+    {
+        if (Input.GetKeyDown(KeyCode.Period))
+        {
+            gameManager.ChangeGameSpeed(true);
+        }
+        else if (Input.GetKeyDown(KeyCode.Comma))
+        {
+            gameManager.ChangeGameSpeed(false);
+        }
     }
 
     private void CheckDeleteMouseInputs()
@@ -121,8 +147,7 @@ public class PlayerScript : MonoBehaviour
     {
         if (quickActionTimer <= 0)
         {
-            gameManager.RemoveCreature(creatureMarked);
-            Destroy(creatureMarked.gameObject);
+            gameManager.RemoveCreature(creatureMarked.creatureBase);
             creatureMarked = null;
             StartQuickActionTimer();
         }

@@ -1,23 +1,26 @@
+using TMPro;
 using UnityEngine;
 
 public class FoodSource : MonoBehaviour
 {
     /// <summary>
-    /// Amount of food given per individual food piece
+    /// Amount of foodText given per individual foodText piece
     /// </summary>
     [SerializeField] private float foodValue = 5.0f;
     /// <summary>
-    /// Rate (compared to Food Grow Time) at which food is regrown
+    /// Rate (compared to Food Grow Time) at which foodText is regrown
     /// </summary>
     [SerializeField] private float foodGrowRate = 1.0f;
     /// <summary>
-    /// How much time it takes to replenish 1 food piece
+    /// How much time it takes to replenish 1 foodText piece
     /// </summary>
     [SerializeField] private float foodGrowTime = 10.0f;
     private float currentGrowTime = 0.0f;
 
+    [SerializeField] TextMeshProUGUI foodText;
+
     private const int MAX_FOOD_PIECES = 5;
-    private int currentFoodPieces;
+    [SerializeField] private int currentFoodPieces;
 
     private void Start()
     {
@@ -27,6 +30,7 @@ public class FoodSource : MonoBehaviour
     private void Update()
     {
         CheckFoodRegrowth();
+        UpdateFoodText();
     }
 
     public float TakeFood()
@@ -49,6 +53,7 @@ public class FoodSource : MonoBehaviour
             if (currentGrowTime >= foodGrowTime)
             {
                 RegrowFood();
+                currentGrowTime = 0.0f;
             }
             else
             {
@@ -57,8 +62,10 @@ public class FoodSource : MonoBehaviour
         }
     }
 
-    private void RegrowFood()
+    private void UpdateFoodText()
     {
-        currentFoodPieces++;
+        foodText.text = "Food: " + currentFoodPieces;
     }
+
+    private void RegrowFood() { currentFoodPieces++; }
 }

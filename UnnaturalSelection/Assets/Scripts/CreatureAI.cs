@@ -5,9 +5,10 @@ using UnityEngine.AI;
 
 public class CreatureAI : MonoBehaviour
 {
-    private NavMeshAgent agent;
+    public NavMeshAgent agent;
     [SerializeField] private GameObject target;
     private GameManager gameManager;
+    public CreatureBase creatureBase;
 
     [SerializeField] private float wanderDistance = 5.0f;
 
@@ -28,6 +29,9 @@ public class CreatureAI : MonoBehaviour
         gameManager = FindAnyObjectByType<GameManager>();
 
         gameManager.RegisterCreature(this);
+
+        creatureBase = GetComponent<CreatureBase>();
+        creatureBase.ApplyStatChanges();
 
         GenerateWanderCooldown();
     }

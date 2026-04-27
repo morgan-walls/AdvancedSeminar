@@ -1,13 +1,14 @@
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.UI;
 
 public class CreatureBase : MonoBehaviour
 {
     private GameManager gameManager;
-    private CreatureAI aiComponent;
-    [SerializeField] private Collider detectorRange;
+    public CreatureAI aiComponent;
     private int triggersHit = 0;
 
     [SerializeField] private float maxHunger = 10.0f;
@@ -21,15 +22,34 @@ public class CreatureBase : MonoBehaviour
     [SerializeField] private GameObject canvasObject;
     [SerializeField] private Scrollbar hungerScrollBar;
     [SerializeField] private Scrollbar healthScrollBar;
+    [SerializeField] private Scrollbar mateScrollBar;
+    [SerializeField] private TextMeshProUGUI statsText;
 
     [SerializeField] private List<FoodSource> FoodInRange;
     private bool movingToFood = false;
+    [SerializeField] private List<FoodSource> FoodInInteractionRange;
+
+    [SerializeField] private List<CreatureBase> creaturesInRange;
+    [SerializeField] private List<CreatureBase> creaturesInInteractionRange;
 
 
     [SerializeField] private GameObject DetectionRange;
     [SerializeField] private GameObject InteractionRange;
-    private const float detectionRangeSize = 20;
-    private const float interactionRangeSize = 5;
+    private float detectionRangeSize = 20;
+    private float interactionRangeSize = 5;
+
+    public bool readyToMate = true;
+    [SerializeField] private float mateCooldownTimer = 10.0f;
+    [SerializeField] private float mateCooldown = 0.0f;
+
+    //Creature stats
+    public float speedMultiplier = 1.0f;
+    public float reproductionMultiplier = 1.0f;
+    public float perceptionMultiplier = 1.0f;
+    public float hungerMultiplier = 1.0f;
+
+    public float MUTATION_CHANCE = 10.0f;
+    public float MUTATION_CHANGE_MAX = 0.5f;
 
     /// <summary>
     /// all ranges for the creature, ordered from biggest to smallest
@@ -43,6 +63,9 @@ public class CreatureBase : MonoBehaviour
     private void Awake()
     {
         FoodInRange = new List<FoodSource>();
+        FoodInInteractionRange = new List<FoodSource>();
+        creaturesInRange = new List<CreatureBase>();
+        creaturesInInteractionRange = new List<CreatureBase>();
     }
 
     private void Start()
@@ -58,6 +81,15 @@ public class CreatureBase : MonoBehaviour
 
         InteractionRange.transform.localScale = Vector3.zero;
         StartCoroutine(ExpandRange(InteractionRange, interactionRangeSize));
+    }
+
+    public void ApplyStatChanges()
+    {
+        if (aiComponent != null)
+        {
+            aiComponent.agent.speed *= speedMultiplier;
+        }
+        detectionRangeSize *= perceptionMultiplier; interactionRangeSize *= perceptionMultiplier;
     }
 
     IEnumerator ExpandRange(GameObject range, float rangeSize)
@@ -80,6 +112,8 @@ public class CreatureBase : MonoBehaviour
     {
         hungerScrollBar.size = hunger / maxHunger;
         healthScrollBar.size = health / maxHealth;
+        mateScrollBar.size = 1 - mateCooldown / mateCooldownTimer;
+        statsText.text = "Speed: " + Mathf.Round(speedMultiplier * 100f) * 0.01f + "x\nReproduction: " + Mathf.Round(reproductionMultiplier * 100f) * 0.01f + "x\nHunger: " + Mathf.Round(hungerMultiplier * 100f) * 0.01f + "x\nPerception: " + Mathf.Round(perceptionMultiplier * 100f) * 0.01f + "x";
 
         canvasObject.transform.LookAt(gameManager.GetPlayerCamera().transform);
     }
@@ -87,6 +121,77 @@ public class CreatureBase : MonoBehaviour
     private void FixedUpdate()
     {
         CheckHunger();
+        UpdateRanges();
+        CheckReproduction();
+    }
+
+    private void CheckReproduction()
+    {
+        if (readyToMate && !isHungry)
+        {
+            foreach (CreatureBase creature in creaturesInInteractionRange)
+            {
+                if (creature.readyToMate && !creature.isHungry)
+                {
+                    CreatureBase newCreature = gameManager.SpawnCreature(transform.position, transform.rotation);
+                    CheckForMutations(newCreature);
+                    MateCooldown();
+                    creature.MateCooldown();
+                    break;
+                }
+            }
+        }
+        if (!isHungry && mateCooldown > 0)
+        {
+            mateCooldown -= Time.deltaTime * gameManager.mateCooldownRate * reproductionMultiplier;
+            if (mateCooldown < 0)
+            {
+                mateCooldown = 0;
+                readyToMate = true;
+            }    
+        }
+    }
+
+    public void CheckForMutations(CreatureBase newCreature)
+    {
+        newCreature.perceptionMultiplier = CheckStatMutation(perceptionMultiplier);
+        newCreature.speedMultiplier = CheckStatMutation(speedMultiplier);
+        newCreature.hungerMultiplier = CheckStatMutation(hungerMultiplier);
+        newCreature.reproductionMultiplier = CheckStatMutation(reproductionMultiplier);
+    }
+
+    public float CheckStatMutation(float currentStat)
+    {
+        if (CheckForStatChange((int)MUTATION_CHANCE))
+        {
+            currentStat = RandomStatChange(currentStat);
+        }
+
+        return currentStat;
+    }
+
+    private bool CheckForStatChange(int max)
+    {
+        bool StatChanges = false;
+
+        if (Random.Range(0, max) == 0)
+        {
+            StatChanges = true;
+        }
+
+        return StatChanges;
+    }
+
+    private float RandomStatChange(float value)
+    {
+        float newValue = Random.Range(value - value * MUTATION_CHANGE_MAX, value + value * MUTATION_CHANGE_MAX);
+        return newValue;
+    }
+
+    public void MateCooldown()
+    {
+        mateCooldown = mateCooldownTimer;
+        readyToMate = false;
     }
 
     private void CheckHunger()
@@ -94,23 +199,31 @@ public class CreatureBase : MonoBehaviour
         if (!isHungry && hunger <= hungryStateStart)
         {
             isHungry = true;
-
-            Debug.Log("Creature is Hungry");
+        }
+        if (isHungry)
+        {
+            if (FoodInInteractionRange.Count > 0)
+            {
+                AddFood(FindClosestFoodSource().TakeFood());
+            }
+            else if (!movingToFood)
+            {
+                if (FoodInRange.Count > 0)
+                {
+                    aiComponent.WanderToLocation(FindClosestFoodSource().transform.position);
+                    movingToFood = true;
+                }
+            }
         }
         if (hunger > 0)
         {
             hunger = DrainStatOverTime(hunger);
-            if (hunger <= hungryStateStart)
+            if (health < maxHealth)
             {
-                if (!movingToFood)
+                health += Time.deltaTime * gameManager.healthRegenRate;
+                if (health >  maxHealth)
                 {
-                    if (FindClosestFoodSource() != null)
-                    {
-                        aiComponent.WanderToLocation(FindClosestFoodSource().transform.position);
-                        movingToFood = true;
-
-                        Debug.Log("Wandering to nearest Food");
-                    }
+                    health = maxHealth;
                 }
             }
         }
@@ -124,8 +237,7 @@ public class CreatureBase : MonoBehaviour
             health = DrainStatOverTime(health);
             if (health <= 0)
             {
-                gameManager.RemoveCreature(aiComponent);
-                Destroy(gameObject);
+                gameManager.RemoveCreature(this);
             }
         }
     }
@@ -140,8 +252,6 @@ public class CreatureBase : MonoBehaviour
                 aiComponent.WanderToLocation(foodSource.transform.position);
             }
         }
-
-        Debug.Log("Food Source Found");
     }
 
     public void RemoveFoodSource(FoodSource foodSource)
@@ -150,13 +260,11 @@ public class CreatureBase : MonoBehaviour
         {
             FoodInRange.Remove(foodSource);
         }
-
-        Debug.Log("Food Source Away");
     }
 
     private float DrainStatOverTime(float stat)
     {
-        return stat -= Time.deltaTime * gameManager.hungerDrainRate;
+        return stat -= Time.deltaTime * gameManager.hungerDrainRate * 1/hungerMultiplier;
     }
 
     public void AddFood(float foodAmount)
@@ -166,38 +274,117 @@ public class CreatureBase : MonoBehaviour
         {
             hunger = maxHunger;
         }
+        if (hunger > hungryStateStart)
+        {
+            isHungry = false;
+        }
         movingToFood = false;
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        //Debug.Log("Trigger Entered");
         if (other.TryGetComponent<FoodSource>(out FoodSource foodSource))
         {
-            if (!FoodInRange.Contains(foodSource))
+            if (!FoodInRange.Contains(foodSource) && Vector3.Distance(transform.position, foodSource.transform.position) <= detectionRangeSize)
             {
                 FoodDetected(foodSource);
             }
-            else
+            else if (!FoodInInteractionRange.Contains(foodSource) && Vector3.Distance(transform.position, foodSource.transform.position) <= interactionRangeSize)
             {
+                FoodInInteractionRange.Add(foodSource);
                 AddFood(FindClosestFoodSource().TakeFood());
             }
-            /*
-            if (triggersHit == (int)CreatureRanges.DetectionRange)
+        }
+        else if (other.TryGetComponent<CreatureBase>(out CreatureBase creature))
+        {
+            if (!creaturesInRange.Contains(creature) && Vector3.Distance(transform.position, creature.transform.position) <= detectionRangeSize)
             {
-                FoodDetected(foodSource);
+                creaturesInRange.Add(creature);
             }
-            else if (triggersHit == (int)CreatureRanges.InteractionRange)
+            if (!creaturesInInteractionRange.Contains(creature) && Vector3.Distance(transform.position, creature.transform.position) <= interactionRangeSize)
             {
-                AddFood(FindClosestFoodSource().TakeFood());
+                creaturesInInteractionRange.Add(creature);
             }
-            */
-            triggersHit++;
         }
     }
-    private void OnTriggerExit(Collider other)
+
+    private void UpdateRanges()
     {
-        triggersHit--;
+        List<FoodSource> tempFoodList = new List<FoodSource>();
+
+        //Food sources
+        
+        foreach (FoodSource foodSource in FoodInInteractionRange)
+        {
+            if (Vector3.Distance(transform.position, foodSource.transform.position) > interactionRangeSize)
+            {
+                tempFoodList.Add(foodSource);
+            }
+        }
+        foreach (FoodSource foodSource in tempFoodList)
+        {
+            FoodInInteractionRange.Remove(foodSource);
+        }
+        tempFoodList.Clear();
+        foreach (FoodSource foodSource in FoodInRange)
+        {
+            if (Vector3.Distance(transform.position, foodSource.transform.position) > detectionRangeSize)
+            {
+                tempFoodList.Add(foodSource);
+            }
+        }
+        foreach (FoodSource foodSource in tempFoodList)
+        {
+            FoodInRange.Remove(foodSource);
+        }
+        tempFoodList.Clear();
+
+        //Creatures
+        
+        List<CreatureBase> tempCreatureList = new List<CreatureBase>();
+
+        foreach (CreatureBase creature in creaturesInInteractionRange)
+        {
+            if (creature != null)
+            {
+                if (Vector3.Distance(transform.position, creature.transform.position) > interactionRangeSize)
+                {
+                    tempCreatureList.Add(creature);
+                }
+            }
+        }
+        foreach (CreatureBase creature in tempCreatureList)
+        {
+            creaturesInInteractionRange.Remove(creature);
+        }
+        tempCreatureList.Clear();
+        foreach (CreatureBase creature in creaturesInRange)
+        {
+            if (creature != null)
+            {
+                if (Vector3.Distance(transform.position, creature.transform.position) > detectionRangeSize)
+                {
+                    tempCreatureList.Add(creature);
+                }
+            }
+        }
+        foreach (CreatureBase creature in tempCreatureList)
+        {
+            creaturesInRange.Remove(creature);
+        }
+        tempCreatureList.Clear();
+    }
+
+    public void RemoveCreature(CreatureBase creature)
+    {
+        if (creaturesInInteractionRange.Contains(creature))
+        {
+            creaturesInInteractionRange.Remove(creature);
+        }    
+        if(creaturesInRange.Contains(creature))
+        {
+            creaturesInRange.Remove(creature);
+        }
     }
 
     private FoodSource FindClosestFoodSource()
